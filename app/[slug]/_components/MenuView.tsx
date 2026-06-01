@@ -6,9 +6,9 @@ import {
   DEFAULT_LOCALE,
   LOCALES,
   LOCALE_LABELS,
+  localized,
   t,
 } from "@/lib/i18n";
-import { localized } from "@/lib/sheets";
 import type { Locale, MenuCategory, Restaurant } from "@/lib/types";
 import RestaurantHeader from "./RestaurantHeader";
 import ProductCard from "./ProductCard";

@@ -22,17 +22,31 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#fbfaf7",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fbfaf7" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c0a08" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
 };
 
+// Runs before paint to avoid a light-to-dark flash on reload for users
+// who previously chose the dark theme.
+const themeBootstrap = `try{var t=localStorage.getItem('bm:theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}`;
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${sans.variable} ${serif.variable} antialiased`}>
+    <html
+      lang="en"
+      className={`${sans.variable} ${serif.variable} antialiased`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+      </head>
       <body className="min-h-dvh">{children}</body>
     </html>
   );

@@ -23,6 +23,9 @@ export const dict = {
     empty: "No items in this category yet.",
     loadError: "We couldn't load the menu right now.",
     poweredBy: "Digital menu",
+    atmosphere: "Atmosphere",
+    themeLight: "Daylight",
+    themeDark: "Candlelight",
   },
   pt: {
     tagline: "Um sabor de Portugal, dentada a dentada.",
@@ -38,6 +41,9 @@ export const dict = {
     empty: "Ainda não há pratos nesta categoria.",
     loadError: "Não foi possível carregar o menu.",
     poweredBy: "Menu digital",
+    atmosphere: "Ambiente",
+    themeLight: "Luz do dia",
+    themeDark: "Luz de velas",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
@@ -45,4 +51,11 @@ export type DictKey = keyof typeof dict.en;
 
 export function t(locale: Locale, key: DictKey): string {
   return dict[locale][key] ?? dict.en[key];
+}
+
+export function localized<T extends { en: string; pt: string }>(
+  value: T,
+  locale: Locale,
+): string {
+  return value[locale] || value.en;
 }

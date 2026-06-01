@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { DEFAULT_LOCALE, LOCALES, LOCALE_LABELS, t } from "@/lib/i18n";
 import type { Locale, Restaurant } from "@/lib/types";
+import ThemeToggle from "./ThemeToggle";
 
 type Props = {
   restaurant: Restaurant;
@@ -96,6 +97,10 @@ export default function HomeHero({ restaurant }: Props) {
             <path d="M5 12h14M13 6l6 6-6 6" />
           </svg>
         </Link>
+      </div>
+
+      <div className="flex justify-center px-6 pb-10">
+        <ThemeToggle locale={locale} />
       </div>
 
       <footer className="px-6 pb-8 text-center text-[11px] uppercase tracking-[0.18em] text-muted">

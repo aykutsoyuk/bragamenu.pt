@@ -3,8 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import type { Locale, MenuItem } from "@/lib/types";
-import { localized } from "@/lib/sheets";
-import { t } from "@/lib/i18n";
+import { localized, t } from "@/lib/i18n";
 import Badge from "./Badge";
 
 type Props = {
@@ -27,6 +26,7 @@ export default function ProductCard({ item, locale }: Props) {
       {showImage && (
         <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-subtle sm:h-28 sm:w-28">
           <Image
+            loading="eager"
             src={item.image as string}
             alt={title}
             fill

@@ -1,4 +1,27 @@
-import type { Locale, MenuCategory, MenuItem } from "./types";
+import fs from "node:fs";
+import path from "node:path";
+import type { MenuCategory, MenuItem } from "./types";
+
+const IMG_EXTS = ["jpg", "jpeg", "png", "webp", "avif"] as const;
+
+// If a sheet says "/casa_braga/chicken_broth.jpg" but the file on disk is
+// actually .jpeg/.png, swap the extension for whichever file exists.
+// Only touches relative paths (Drive/CDN URLs pass through unchanged).
+function resolveLocalImage(rel: string): string {
+  if (!rel.startsWith("/")) return rel;
+  const publicDir = path.join(process.cwd(), "public");
+  const fullAsIs = path.join(publicDir, rel);
+  if (fs.existsSync(fullAsIs)) return rel;
+
+  const dot = rel.lastIndexOf(".");
+  const base = dot > rel.lastIndexOf("/") ? rel.slice(0, dot) : rel;
+  for (const ext of IMG_EXTS) {
+    if (fs.existsSync(path.join(publicDir, `${base}.${ext}`))) {
+      return `${base}.${ext}`;
+    }
+  }
+  return rel;
+}
 
 type Raw = Record<string, unknown>;
 
@@ -35,13 +58,15 @@ function slugify(s: string): string {
 }
 
 function normalizeImage(url: string): string | null {
-  if (!url) return null;
+  // Strip surrounding quotes/whitespace — sheet cells sometimes arrive as `"/path"`.
+  const cleaned = url.trim().replace(/^["'](.*)["']$/, "$1").trim();
+  if (!cleaned) return null;
   // Google Drive share links → direct image
-  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  const driveMatch = cleaned.match(/drive\.google\.com\/file\/d\/([^/]+)/);
   if (driveMatch) {
     return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
   }
-  return url;
+  return resolveLocalImage(cleaned);
 }
 
 function normalizeRow(row: Raw, index: number): MenuItem | null {
@@ -229,9 +254,3 @@ function demoMenu(): MenuItem[] {
     .filter((x): x is MenuItem => x !== null);
 }
 
-export function localized<T extends { en: string; pt: string }>(
-  value: T,
-  locale: Locale,
-): string {
-  return value[locale] || value.en;
-}
