@@ -26,11 +26,13 @@ export default function ProductCard({ item, locale }: Props) {
       {showImage && (
         <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-subtle sm:h-28 sm:w-28">
           <Image
-            loading="eager"
             src={item.image as string}
             alt={title}
+            loading="lazy"
             fill
             sizes="(max-width: 640px) 96px, 112px"
+            placeholder="blur"
+            blurDataURL="data:image/gif;base64,R0lGODlhAQABAPAAAOfn5////yH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
             className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
             onError={() => setImgFailed(true)}
           />
