@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { Locale, Restaurant } from "@/lib/types";
 import { t } from "@/lib/i18n";
+import ReservationButton from "@/components/reservation/ReservationButton";
 
 type Props = {
   restaurant: Restaurant;
@@ -90,9 +91,9 @@ export default function RestaurantHeader({ restaurant, locale }: Props) {
             </p>
           </div>
 
-          {(restaurant.instagram || restaurant.whatsapp) && (
-            <div className="flex flex-wrap gap-2">
-              {restaurant.instagram && (
+          <div className="flex flex-wrap items-center gap-2">
+            <ReservationButton restaurantName={restaurant.name} locale={locale} />
+            {restaurant.instagram && (
                 <a
                   href={restaurant.instagram}
                   target="_blank"
@@ -114,8 +115,7 @@ export default function RestaurantHeader({ restaurant, locale }: Props) {
                   {t(locale, "contact")}
                 </a>
               )}
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </header>

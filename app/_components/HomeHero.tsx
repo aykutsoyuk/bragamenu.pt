@@ -6,6 +6,7 @@ import { useState } from "react";
 import { DEFAULT_LOCALE, LOCALES, LOCALE_LABELS, t } from "@/lib/i18n";
 import type { Locale, Restaurant } from "@/lib/types";
 import ThemeToggle from "./ThemeToggle";
+import ReservationButton from "@/components/reservation/ReservationButton";
 
 type Props = {
   restaurant: Restaurant;
@@ -78,25 +79,32 @@ export default function HomeHero({ restaurant }: Props) {
           </div>
         </div>
 
-        <Link
-          href={`/${restaurant.slug}?lang=${locale}`}
-          onClick={handleEnter}
-          className="mt-8 inline-flex w-full items-center justify-center rounded-full bg-foreground px-6 py-4 text-base font-medium text-background shadow-[var(--shadow-card)] transition-transform hover:-translate-y-0.5"
-        >
-          {t(locale, "goToMenu")}
-          <svg
-            className="ml-2 h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
+        <div className="mt-8 flex w-full flex-col gap-3">
+          <Link
+            href={`/${restaurant.slug}?lang=${locale}`}
+            onClick={handleEnter}
+            className="inline-flex w-full items-center justify-center rounded-full bg-foreground px-6 py-4 text-base font-medium text-background shadow-[var(--shadow-card)] transition-transform hover:-translate-y-0.5"
           >
-            <path d="M5 12h14M13 6l6 6-6 6" />
-          </svg>
-        </Link>
+            {t(locale, "goToMenu")}
+            <svg
+              className="ml-2 h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </Link>
+          <ReservationButton
+            restaurantName={restaurant.name}
+            locale={locale}
+            variant="block"
+          />
+        </div>
       </div>
 
       <div className="flex justify-center px-6 pb-10">

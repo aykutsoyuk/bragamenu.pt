@@ -77,3 +77,56 @@
     scroll-margin-top: 6.5rem;
   }
 }
+
+/* Reservation concierge chat animations. */
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sheet {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes bubble {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[fade_200ms_ease-out\],
+  .animate-\[sheet_280ms_cubic-bezier\(0\.22\,1\,0\.36\,1\)\],
+  .animate-\[bubble_220ms_ease-out\] {
+    animation: none;
+  }
+}

@@ -1,6 +1,6 @@
 export type Locale = "en" | "pt";
 
-export type Localized = Record<Locale, string>;
+export type Localized = { en: string; pt: string; };
 
 export type MenuItem = {
   id: string;

@@ -1,4 +1,4 @@
-import type { Locale } from "./types";
+import type { Locale, Localized } from "./types";
 
 export const LOCALES: Locale[] = ["en", "pt"];
 export const DEFAULT_LOCALE: Locale = "en";
@@ -53,9 +53,6 @@ export function t(locale: Locale, key: DictKey): string {
   return dict[locale][key] ?? dict.en[key];
 }
 
-export function localized<T extends { en: string; pt: string }>(
-  value: T,
-  locale: Locale,
-): string {
+export function localized(value: Localized, locale: Locale): string {
   return value[locale] || value.en;
 }

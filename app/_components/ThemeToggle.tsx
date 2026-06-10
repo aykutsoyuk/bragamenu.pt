@@ -88,44 +88,41 @@ export default function ThemeToggle({ locale }: Props) {
   };
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <span className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted">
-        {t(locale, "atmosphere")}
-      </span>
-      <div
-        role="group"
-        aria-label={t(locale, "atmosphere")}
-        className="inline-flex rounded-full border border-border bg-surface p-1 shadow-[var(--shadow-card)]"
+    <div
+      role="group"
+      aria-label={t(locale, "atmosphere")}
+      className="inline-flex rounded-full border border-border bg-surface p-0.5 shadow-[var(--shadow-card)]"
+    >
+      <button
+        type="button"
+        onClick={() => apply("light")}
+        aria-pressed={theme === "light"}
+        aria-label={t(locale, "themeLight")}
+        title={t(locale, "themeLight")}
+        suppressHydrationWarning
+        className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+          theme === "light"
+            ? "bg-foreground text-background"
+            : "text-muted hover:text-foreground"
+        }`}
       >
-        <button
-          type="button"
-          onClick={() => apply("light")}
-          aria-pressed={theme === "light"}
-          suppressHydrationWarning
-          className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] transition-colors ${
-            theme === "light"
-              ? "bg-foreground text-background"
-              : "text-muted hover:text-foreground"
-          }`}
-        >
-          <SunIcon />
-          {t(locale, "themeLight")}
-        </button>
-        <button
-          type="button"
-          onClick={() => apply("dark")}
-          aria-pressed={theme === "dark"}
-          suppressHydrationWarning
-          className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] transition-colors ${
-            theme === "dark"
-              ? "bg-foreground text-background"
-              : "text-muted hover:text-foreground"
-          }`}
-        >
-          <MoonIcon />
-          {t(locale, "themeDark")}
-        </button>
-      </div>
+        <SunIcon />
+      </button>
+      <button
+        type="button"
+        onClick={() => apply("dark")}
+        aria-pressed={theme === "dark"}
+        aria-label={t(locale, "themeDark")}
+        title={t(locale, "themeDark")}
+        suppressHydrationWarning
+        className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+          theme === "dark"
+            ? "bg-foreground text-background"
+            : "text-muted hover:text-foreground"
+        }`}
+      >
+        <MoonIcon />
+      </button>
     </div>
   );
 }
