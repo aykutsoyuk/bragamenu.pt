@@ -27,6 +27,7 @@ export async function sendReservationRequest(
     config,
     actionUrl("confirmed"),
     actionUrl("rejected"),
+    config.restaurant_language,
   );
 
   return sendEmail({

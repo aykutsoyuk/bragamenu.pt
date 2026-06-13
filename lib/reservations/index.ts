@@ -3,13 +3,16 @@ export { assignTable } from "./assignTable";
 export {
   loadAvailabilityContext,
   maxTableCapacity,
+  totalCapacity,
   occupiedTableIdsAt,
   type AvailabilityContext,
 } from "./getAvailableTables";
 export {
   validateReservationInput,
-  validateLargeGroupInput,
-  type LargeGroupInput,
+  validateManualReviewInput,
+  validateCallbackInput,
+  type ManualReviewInput,
+  type CallbackInput,
   type ValidationResult,
 } from "./validation";
 export {

@@ -19,12 +19,20 @@ export interface ReservationCopy {
   noSlots: string;
   closedDay: string;
   pickAnotherDate: string;
-  largeGroupIntro: string;
-  largeGroupSummaryIntro: string;
-  largeGroupConfirm: string;
-  largeGroupSuccessTitle: string;
-  largeGroupSuccessBody: string;
-  rateLimited: string;
+  manualReviewIntro: string;
+  manualReviewSummaryIntro: string;
+  manualReviewConfirm: string;
+  manualReviewSuccessTitle: string;
+  manualReviewSuccessBody: string;
+  requestManualReview: string;
+  emailWarning: string;
+  failsafeIntro: string;
+  failsafeCall: string;
+  failsafeCallback: string;
+  callbackSummaryIntro: string;
+  callbackConfirm: string;
+  callbackSuccessTitle: string;
+  callbackSuccessBody: string;
   askName: string;
   askPhone: string;
   askEmail: string;
@@ -70,16 +78,27 @@ const EN: ReservationCopy = {
     "I'm sorry — we're fully booked for that day and party size. Shall we try another date?",
   closedDay: "We're closed on that day. Could I suggest another date?",
   pickAnotherDate: "Choose another date",
-  largeGroupIntro:
-    "For large group reservations, please leave your contact details. The restaurant will contact you directly to arrange everything.",
-  largeGroupSummaryIntro:
-    "Here are your details. Shall I send them to the restaurant?",
-  largeGroupConfirm: "Send to the restaurant",
-  largeGroupSuccessTitle: "Details sent",
-  largeGroupSuccessBody:
-    "Thank you! The restaurant has your details and will be in touch shortly to arrange your visit.",
-  rateLimited:
-    "You've made several requests recently. Please wait a little while and try again.",
+  manualReviewIntro:
+    "No single table fits a party this size, but we may be able to combine tables. Please leave your details and the restaurant will review your request and contact you directly.",
+  manualReviewSummaryIntro:
+    "Here are your details. Shall I send them to the restaurant for review?",
+  manualReviewConfirm: "Send for manual review",
+  manualReviewSuccessTitle: "Request sent for review",
+  manualReviewSuccessBody:
+    "Thank you! Your request has been sent to the restaurant for manual review. They'll be in touch shortly to arrange your visit.",
+  requestManualReview: "Request manual review",
+  emailWarning:
+    "Please provide a valid email address. Reservation updates and confirmations will be sent here.",
+  failsafeIntro:
+    "We are currently unable to access the restaurant reservation system. You can call the restaurant directly, or leave your details for a callback.",
+  failsafeCall: "Call the restaurant",
+  failsafeCallback: "Request a callback",
+  callbackSummaryIntro:
+    "We'll pass these to the restaurant so they can call you back. Shall I send them?",
+  callbackConfirm: "Request callback",
+  callbackSuccessTitle: "Callback requested",
+  callbackSuccessBody:
+    "Thank you! The restaurant has your details and will contact you as soon as possible.",
   askName: "Wonderful. Whose name should the reservation be under?",
   askPhone: "Thank you. And a phone number in case we need to reach you?",
   askEmail: "Perfect. Lastly, an email for your confirmation?",
@@ -127,16 +146,27 @@ const PT: ReservationCopy = {
     "Lamento — estamos esgotados nesse dia para esse número de pessoas. Tentamos outra data?",
   closedDay: "Estamos encerrados nesse dia. Posso sugerir outra data?",
   pickAnotherDate: "Escolher outra data",
-  largeGroupIntro:
-    "Para reservas de grupos grandes, deixe os seus contactos, por favor. O restaurante entrará em contacto consigo diretamente para tratar de tudo.",
-  largeGroupSummaryIntro:
-    "Aqui estão os seus dados. Envio-os ao restaurante?",
-  largeGroupConfirm: "Enviar ao restaurante",
-  largeGroupSuccessTitle: "Dados enviados",
-  largeGroupSuccessBody:
-    "Obrigado! O restaurante tem os seus contactos e entrará em contacto em breve para tratar da sua visita.",
-  rateLimited:
-    "Fez vários pedidos recentemente. Aguarde um momento e tente novamente, por favor.",
+  manualReviewIntro:
+    "Não há uma única mesa para um grupo deste tamanho, mas talvez seja possível juntar mesas. Deixe os seus dados e o restaurante irá analisar o seu pedido e contactá-lo diretamente.",
+  manualReviewSummaryIntro:
+    "Aqui estão os seus dados. Envio-os ao restaurante para análise?",
+  manualReviewConfirm: "Enviar para análise",
+  manualReviewSuccessTitle: "Pedido enviado para análise",
+  manualReviewSuccessBody:
+    "Obrigado! O seu pedido foi enviado ao restaurante para análise manual. Entrarão em contacto em breve para tratar da sua visita.",
+  requestManualReview: "Pedir análise manual",
+  emailWarning:
+    "Indique um email válido, por favor. As atualizações e confirmações da reserva serão enviadas para este endereço.",
+  failsafeIntro:
+    "De momento não conseguimos aceder ao sistema de reservas do restaurante. Pode ligar diretamente ao restaurante ou deixar os seus dados para ser contactado.",
+  failsafeCall: "Ligar ao restaurante",
+  failsafeCallback: "Pedir contacto",
+  callbackSummaryIntro:
+    "Vamos entregar estes dados ao restaurante para que o contactem. Envio-os?",
+  callbackConfirm: "Pedir contacto",
+  callbackSuccessTitle: "Pedido de contacto enviado",
+  callbackSuccessBody:
+    "Obrigado! O restaurante tem os seus dados e entrará em contacto o mais rapidamente possível.",
   askName: "Maravilha. Em nome de quem fica a reserva?",
   askPhone: "Obrigado. E um número de telefone para o caso de precisarmos de o contactar?",
   askEmail: "Perfeito. Por fim, um email para a sua confirmação?",

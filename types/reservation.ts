@@ -1,6 +1,8 @@
 // Domain types for the reservation module.
 // Mirrors the column layout of the Google Sheets that back this feature.
 
+import type { Locale } from "@/lib/types";
+
 export type ReservationStatus = "pending" | "confirmed" | "rejected";
 
 /** Sheet: restaurant_config (single row). */
@@ -9,6 +11,8 @@ export interface RestaurantConfig {
   notification_email: string;
   phone: string;
   whatsapp: string;
+  /** Language for restaurant-facing emails (defaults to "en"). */
+  restaurant_language: Locale;
 }
 
 /** Sheet: tables — one row per physical table. */
@@ -41,6 +45,8 @@ export interface Reservation {
   time: string;
   assigned_table: string;
   status: ReservationStatus;
+  /** Website language at booking time — used for customer-facing emails. */
+  customer_language: Locale;
 }
 
 /** A bookable time on a given date, plus the table best-fit allocation would use. */
@@ -59,4 +65,6 @@ export interface ReservationInput {
   people: number;
   date: string;
   time: string;
+  /** Website language at booking time; defaults to "en" when omitted. */
+  customer_language?: Locale;
 }

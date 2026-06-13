@@ -24,6 +24,11 @@ export async function verifyTurnstile(
   token: string,
   remoteIp?: string,
 ): Promise<TurnstileResult> {
+  // Skip entirely outside production: site keys are bound to the live domain, so
+  // localhost can't produce a valid token (Cloudflare error 110200). This lets
+  // local dev run without Turnstile even when the secret is present in .env.
+  if (process.env.NODE_ENV !== "production") return { success: true, skipped: true };
+
   const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
   if (!secret) return { success: true, skipped: true };
   if (!token) return { success: false, skipped: false, error: "missing_token" };

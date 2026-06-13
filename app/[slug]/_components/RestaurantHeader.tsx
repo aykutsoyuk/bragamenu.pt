@@ -92,7 +92,11 @@ export default function RestaurantHeader({ restaurant, locale }: Props) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <ReservationButton restaurantName={restaurant.name} locale={locale} />
+            <ReservationButton
+              restaurantName={restaurant.name}
+              locale={locale}
+              restaurantWhatsapp={restaurant.whatsapp}
+            />
             {restaurant.instagram && (
                 <a
                   href={restaurant.instagram}

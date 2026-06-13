@@ -6,6 +6,8 @@ export {
   fetchTables,
   fetchOpeningHours,
   fetchReservations,
+  fallbackRestaurantConfig,
+  fallbackPhone,
   type ReservationRow,
 } from "./fetchSheet";
 export { appendReservation } from "./appendReservation";

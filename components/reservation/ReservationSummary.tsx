@@ -6,7 +6,7 @@ type Props = {
   people: number;
   /** Pre-formatted, localized date label. */
   dateLabel: string;
-  /** Omitted for large-group enquiries, which have no fixed seating time. */
+  /** Omitted for manual-review enquiries, which have no fixed seating time. */
   time?: string;
 };
 

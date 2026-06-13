@@ -8,6 +8,12 @@ import { useEffect, useRef } from "react";
 // to the parent via `onToken`, cleared on expiry/error so stale tokens are never
 // submitted.
 
+// Disabled outside production: the site key is bound to the live domain, so
+// localhost throws Cloudflare error 110200. Skipping the widget locally keeps
+// the dev reservation flow working (the server skips verification to match).
+const ENABLED =
+  process.env.NODE_ENV === "production" &&
+  Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 const SCRIPT_SRC =
   "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
@@ -49,8 +55,8 @@ function loadTurnstileScript(): Promise<void> {
   return scriptPromise;
 }
 
-/** True at runtime when a site key is configured (so callers can gate submit). */
-export const isTurnstileEnabled = Boolean(SITE_KEY);
+/** True only in production with a site key set (so callers can gate submit). */
+export const isTurnstileEnabled = ENABLED;
 
 export default function TurnstileWidget({
   onToken,
@@ -61,7 +67,7 @@ export default function TurnstileWidget({
   const widgetIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!SITE_KEY) return;
+    if (!ENABLED || !SITE_KEY) return;
     let cancelled = false;
 
     loadTurnstileScript()
@@ -92,6 +98,6 @@ export default function TurnstileWidget({
     };
   }, [onToken]);
 
-  if (!SITE_KEY) return null;
+  if (!ENABLED) return null;
   return <div ref={containerRef} className="flex justify-center" />;
 }

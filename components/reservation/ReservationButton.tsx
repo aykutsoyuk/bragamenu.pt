@@ -8,6 +8,8 @@ import ReservationChat from "./ReservationChat";
 type Props = {
   restaurantName: string;
   locale: Locale;
+  /** Static contact link (e.g. wa.me URL) used by the chat's fail-safe mode. */
+  restaurantWhatsapp?: string | null;
   /**
    * "pill"  — compact accent pill, for the menu header actions row.
    * "block" — full-width prominent button, for the home reception screen.
@@ -40,6 +42,7 @@ function CalendarIcon() {
 export default function ReservationButton({
   restaurantName,
   locale,
+  restaurantWhatsapp,
   variant = "pill",
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -62,6 +65,7 @@ export default function ReservationButton({
         onClose={() => setOpen(false)}
         restaurantName={restaurantName}
         locale={locale}
+        restaurantWhatsapp={restaurantWhatsapp}
       />
     </>
   );

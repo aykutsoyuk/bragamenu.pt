@@ -19,6 +19,8 @@ type Props = {
   onClose: () => void;
   restaurantName: string;
   locale: Locale;
+  /** Static contact link (e.g. wa.me URL) shown in fail-safe mode. */
+  restaurantWhatsapp?: string | null;
 };
 
 type Step =
@@ -31,7 +33,8 @@ type Step =
   | "summary"
   | "submitting"
   | "done"
-  | "error";
+  | "error"
+  | "failsafe";
 
 type Message = { id: number; role: "assistant" | "user"; content: ReactNode };
 
@@ -59,6 +62,7 @@ export default function ReservationChat({
   onClose,
   restaurantName,
   locale,
+  restaurantWhatsapp,
 }: Props) {
   const copy = getReservationCopy(locale);
   const intlLocale = INTL_LOCALE[locale];
@@ -77,8 +81,13 @@ export default function ReservationChat({
   const [email, setEmail] = useState("");
   const [textValue, setTextValue] = useState("");
   const [showMoreGuests, setShowMoreGuests] = useState(false);
-  // Party too large for any table → collect contact details instead of booking.
-  const [largeGroup, setLargeGroup] = useState(false);
+  // No single table fits → collect contact details for the owner to review.
+  const [manualReview, setManualReview] = useState(false);
+  // Whether the current date is full but could be offered for manual review.
+  const [canManualReview, setCanManualReview] = useState(false);
+  // Fail-safe mode (Sheets unreachable): collect a callback request instead.
+  const [callbackMode, setCallbackMode] = useState(false);
+  const [failsafePhone, setFailsafePhone] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
 
   const idRef = useRef(0);
@@ -140,10 +149,23 @@ export default function ReservationChat({
     setEmail("");
     setTextValue("");
     setShowMoreGuests(false);
-    setLargeGroup(false);
+    setManualReview(false);
+    setCanManualReview(false);
+    setCallbackMode(false);
+    setFailsafePhone("");
     setTurnstileToken("");
     void assistantTurn([copy.greeting(restaurantName)]);
   }, [assistantTurn, copy, restaurantName]);
+
+  // Fail-safe entry: Sheets unreachable, so offer call/callback options.
+  const enterFailsafe = useCallback(
+    async (phone: string) => {
+      setFailsafePhone(phone);
+      setCallbackMode(false);
+      await assistantTurn([copy.failsafeIntro], "failsafe");
+    },
+    [assistantTurn, copy],
+  );
 
   // Seed the conversation when the sheet opens for the first time.
   useEffect(() => {
@@ -211,40 +233,52 @@ export default function ReservationChat({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ people: guests, date: value }),
         });
+
+        if (res.status === 503) {
+          // Sheets unreachable → fail-safe mode (never show fake availability).
+          const body = (await res.json().catch(() => ({}))) as { phone?: string };
+          await enterFailsafe(typeof body.phone === "string" ? body.phone : "");
+          return;
+        }
         if (!res.ok) throw new Error(String(res.status));
         const data = (await res.json()) as {
           open: boolean;
           full: boolean;
-          largeGroup: boolean;
+          manualReview: boolean;
           slots: string[];
         };
 
-        if (data.largeGroup) {
-          // Party larger than any table: switch to contact capture. Date is kept
-          // as the "desired date"; we still collect name/phone/email below.
+        if (data.manualReview) {
+          // No single table fits, but capacity may allow combining tables: collect
+          // contact details for the owner to review. Date is the "desired date".
           setSlots([]);
-          setLargeGroup(true);
-          await assistantTurn([copy.largeGroupIntro, copy.askName], "name");
+          setManualReview(true);
+          await assistantTurn([copy.manualReviewIntro, copy.askName], "name");
           return;
         }
         if (!data.open) {
           setSlots([]);
+          setCanManualReview(false);
           await assistantTurn([copy.closedDay], "slots");
           return;
         }
         if (data.full || data.slots.length === 0) {
+          // Open but no free slot for this party — offer manual review alongside
+          // trying another date (tables might be combined for them).
           setSlots([]);
+          setCanManualReview(true);
           await assistantTurn([copy.noSlots], "slots");
           return;
         }
         setSlots(data.slots);
+        setCanManualReview(false);
         await assistantTurn([copy.askSlot(longDate(value))], "slots");
       } catch {
         setSlots([]);
         await assistantTurn([copy.errorBody], "slots");
       }
     },
-    [assistantTurn, copy, longDate],
+    [assistantTurn, copy, enterFailsafe, longDate],
   );
 
   const handleDate = useCallback(
@@ -273,25 +307,46 @@ export default function ReservationChat({
   );
 
   const showSummary = useCallback(
-    async (guestName: string) => {
+    async (guestName: string, introText?: string) => {
+      const intro =
+        introText ??
+        (manualReview ? copy.manualReviewSummaryIntro : copy.summaryIntro);
       const summaryNode = (
         <div className="w-full">
-          <p className="mb-2">
-            {largeGroup ? copy.largeGroupSummaryIntro : copy.summaryIntro}
-          </p>
+          <p className="mb-2">{intro}</p>
           <ReservationSummary
             copy={copy}
             name={guestName}
             people={people ?? 1}
             dateLabel={date ? longDate(date) : ""}
-            time={largeGroup ? undefined : (time ?? "")}
+            time={manualReview ? undefined : (time ?? "")}
           />
         </div>
       );
       await assistantTurn([summaryNode], "summary");
     },
-    [assistantTurn, copy, date, largeGroup, longDate, people, time],
+    [assistantTurn, copy, date, manualReview, longDate, people, time],
   );
+
+  // Full date → owner may still combine tables; collect contact for review.
+  const startManualReview = useCallback(() => {
+    appendUser(copy.requestManualReview);
+    setManualReview(true);
+    setCanManualReview(false);
+    void assistantTurn([copy.manualReviewIntro, copy.askName], "name");
+  }, [appendUser, assistantTurn, copy]);
+
+  // Fail-safe → collect a callback request. If we already have the contact
+  // details (failure at final submit), skip straight to the recap.
+  const startCallback = useCallback(() => {
+    setCallbackMode(true);
+    setManualReview(false);
+    if (name && phone && email) {
+      void showSummary(name, copy.callbackSummaryIntro);
+    } else {
+      void assistantTurn([copy.askName], "name");
+    }
+  }, [assistantTurn, copy, email, name, phone, showSummary]);
 
   const submitText = useCallback(() => {
     const value = textValue.trim();
@@ -338,15 +393,31 @@ export default function ReservationChat({
 
   const submitReservation = useCallback(async () => {
     if (!date || !people) return;
-    if (!largeGroup && !time) return;
+    const isReserve = !manualReview && !callbackMode;
+    if (isReserve && !time) return;
     setStep("submitting");
 
-    const endpoint = largeGroup
-      ? "/api/reservations/large-group"
-      : "/api/reservations";
-    const payload = largeGroup
-      ? { name, phone, email, people, date, turnstileToken }
-      : { name, phone, email, people, date, time, turnstileToken };
+    const base = { name, phone, email, people, date, turnstileToken, customer_language: locale };
+    let endpoint: string;
+    let payload: Record<string, unknown>;
+    let successTitle: string;
+    let successBody: string;
+    if (callbackMode) {
+      endpoint = "/api/reservations/callback";
+      payload = { ...base, time: time ?? "" };
+      successTitle = copy.callbackSuccessTitle;
+      successBody = copy.callbackSuccessBody;
+    } else if (manualReview) {
+      endpoint = "/api/reservations/manual-review";
+      payload = base;
+      successTitle = copy.manualReviewSuccessTitle;
+      successBody = copy.manualReviewSuccessBody;
+    } else {
+      endpoint = "/api/reservations";
+      payload = { ...base, time };
+      successTitle = copy.successTitle;
+      successBody = copy.successBody;
+    }
 
     try {
       const res = await fetch(endpoint, {
@@ -359,12 +430,8 @@ export default function ReservationChat({
         await assistantTurn(
           [
             <div key="success">
-              <p className="font-display text-lg">
-                {largeGroup ? copy.largeGroupSuccessTitle : copy.successTitle}
-              </p>
-              <p className="mt-1 text-muted">
-                {largeGroup ? copy.largeGroupSuccessBody : copy.successBody}
-              </p>
+              <p className="font-display text-lg">{successTitle}</p>
+              <p className="mt-1 text-muted">{successBody}</p>
             </div>,
           ],
           "done",
@@ -372,14 +439,15 @@ export default function ReservationChat({
         return;
       }
 
-      if (res.status === 429) {
-        // Too many attempts from this IP — surface a friendly message + retry.
+      if (res.status === 503) {
+        // Sheets unreachable mid-flow → fail-safe (callback already is fail-safe).
+        const body = (await res.json().catch(() => ({}))) as { phone?: string };
         setTurnstileToken("");
-        await assistantTurn([copy.rateLimited], "error");
+        await enterFailsafe(typeof body.phone === "string" ? body.phone : "");
         return;
       }
 
-      if (!largeGroup && res.status === 409) {
+      if (isReserve && res.status === 409) {
         // Slot was taken between availability check and submit.
         setTime(null);
         setSlots([]);
@@ -395,10 +463,13 @@ export default function ReservationChat({
     }
   }, [
     assistantTurn,
+    callbackMode,
     copy,
     date,
     email,
-    largeGroup,
+    enterFailsafe,
+    locale,
+    manualReview,
     name,
     people,
     phone,
@@ -498,22 +569,34 @@ export default function ReservationChat({
 
           {(step === "date" ||
             (step === "slots" && slots.length === 0)) && (
-            <div className="flex gap-2 overflow-x-auto scrollbar-none">
-              {dateChips.map((c) => (
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2 overflow-x-auto scrollbar-none">
+                {dateChips.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => handleDate(c.value)}
+                    className="flex shrink-0 flex-col items-center rounded-2xl border border-border bg-surface px-3.5 py-2 transition-colors hover:bg-subtle disabled:opacity-50"
+                  >
+                    <span className="text-[10px] uppercase tracking-wider text-muted">
+                      {c.weekday}
+                    </span>
+                    <span className="text-lg font-medium leading-tight">{c.day}</span>
+                    <span className="text-[10px] text-muted">{c.month}</span>
+                  </button>
+                ))}
+              </div>
+              {canManualReview && (
                 <button
-                  key={c.value}
                   type="button"
                   disabled={busy}
-                  onClick={() => handleDate(c.value)}
-                  className="flex shrink-0 flex-col items-center rounded-2xl border border-border bg-surface px-3.5 py-2 transition-colors hover:bg-subtle disabled:opacity-50"
+                  onClick={startManualReview}
+                  className="h-11 w-full rounded-full border border-border bg-surface text-sm font-medium text-foreground transition-colors hover:bg-subtle disabled:opacity-50"
                 >
-                  <span className="text-[10px] uppercase tracking-wider text-muted">
-                    {c.weekday}
-                  </span>
-                  <span className="text-lg font-medium leading-tight">{c.day}</span>
-                  <span className="text-[10px] text-muted">{c.month}</span>
+                  {copy.requestManualReview}
                 </button>
-              ))}
+              )}
             </div>
           )}
 
@@ -525,6 +608,12 @@ export default function ReservationChat({
                 </Chip>
               ))}
             </div>
+          )}
+
+          {step === "email" && (
+            <p className="mb-2 px-1 text-xs leading-snug text-muted">
+              {copy.emailWarning}
+            </p>
           )}
 
           {(step === "name" || step === "phone" || step === "email") && (
@@ -575,7 +664,11 @@ export default function ReservationChat({
                 onClick={submitReservation}
                 className="h-12 w-full rounded-full bg-accent text-[15px] font-semibold text-white transition-opacity disabled:opacity-50"
               >
-                {largeGroup ? copy.largeGroupConfirm : copy.confirmRequest}
+                {callbackMode
+                  ? copy.callbackConfirm
+                  : manualReview
+                    ? copy.manualReviewConfirm
+                    : copy.confirmRequest}
               </button>
               <button
                 type="button"
@@ -614,6 +707,37 @@ export default function ReservationChat({
                 className="h-12 w-full rounded-full bg-accent text-[15px] font-semibold text-white transition-opacity disabled:opacity-50"
               >
                 {copy.retry}
+              </button>
+            </div>
+          )}
+
+          {step === "failsafe" && (
+            <div className="flex flex-col gap-2">
+              {failsafePhone ? (
+                <a
+                  href={`tel:${failsafePhone}`}
+                  className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-[15px] font-semibold text-white"
+                >
+                  {copy.failsafeCall}
+                </a>
+              ) : (
+                restaurantWhatsapp && (
+                  <a
+                    href={restaurantWhatsapp}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-[15px] font-semibold text-white"
+                  >
+                    {copy.failsafeCall}
+                  </a>
+                )
+              )}
+              <button
+                type="button"
+                onClick={startCallback}
+                className="h-12 w-full rounded-full border border-border bg-surface text-[15px] font-medium text-foreground transition-colors hover:bg-subtle"
+              >
+                {copy.failsafeCallback}
               </button>
             </div>
           )}

@@ -7,7 +7,7 @@ export async function sendRejectionEmail(
   reservation: Reservation,
   config: RestaurantConfig,
 ): Promise<SendResult> {
-  const template = rejectedTemplate(reservation, config);
+  const template = rejectedTemplate(reservation, config, reservation.customer_language);
   return sendEmail({
     to: reservation.email,
     subject: template.subject,

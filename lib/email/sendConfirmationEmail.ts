@@ -7,7 +7,7 @@ export async function sendConfirmationEmail(
   reservation: Reservation,
   config: RestaurantConfig,
 ): Promise<SendResult> {
-  const template = confirmedTemplate(reservation, config);
+  const template = confirmedTemplate(reservation, config, reservation.customer_language);
   return sendEmail({
     to: reservation.email,
     subject: template.subject,

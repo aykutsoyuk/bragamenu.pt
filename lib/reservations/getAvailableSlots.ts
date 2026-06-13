@@ -10,6 +10,7 @@ import {
   loadAvailabilityContext,
   maxTableCapacity,
   occupiedTableIdsAt,
+  totalCapacity,
   type AvailabilityContext,
 } from "./getAvailableTables";
 import {
@@ -28,8 +29,12 @@ export interface SlotsResult {
   available: TimeSlot[];
   /** True when the day is open but every slot is full for this party. */
   full: boolean;
-  /** True when the party exceeds the largest single table — handled out of band. */
-  largeGroup: boolean;
+  /**
+   * True when no single table can seat the party but the restaurant's total
+   * capacity could (tables might be combined) — routed to manual review instead
+   * of auto-rejecting.
+   */
+  manualReview: boolean;
 }
 
 /**
@@ -57,17 +62,19 @@ export function computeSlots(
   openingHours: OpeningHours[],
   ctx: AvailabilityContext,
 ): SlotsResult {
-  // A party that no single table can seat is handled out of band (contact
-  // capture), so short-circuit before any date/availability work.
+  // A party no single table can seat — but that total capacity could fit by
+  // combining tables — is routed to manual review, not auto-rejected. Short-
+  // circuit before any date/availability work.
   const maxCapacity = maxTableCapacity(ctx.tables);
-  if (maxCapacity > 0 && people > maxCapacity) {
-    return { open: false, available: [], full: false, largeGroup: true };
+  const total = totalCapacity(ctx.tables);
+  if (maxCapacity > 0 && people > maxCapacity && people <= total) {
+    return { open: false, available: [], full: false, manualReview: true };
   }
 
   const now = nowInRestaurant();
   // Reject dates outside the bookable window (past, or too far ahead).
   if (date < now.date || date > addDays(now.date, BOOKING_WINDOW_DAYS)) {
-    return { open: false, available: [], full: false, largeGroup: false };
+    return { open: false, available: [], full: false, manualReview: false };
   }
 
   // A weekday may have several opening_hours rows — e.g. a lunch service
@@ -78,7 +85,7 @@ export function computeSlots(
   const weekday = weekdayOf(date);
   const intervals = openingHours.filter((h) => h.day === weekday);
   if (intervals.length === 0) {
-    return { open: false, available: [], full: false, largeGroup: false };
+    return { open: false, available: [], full: false, manualReview: false };
   }
 
   const isToday = date === now.date;
@@ -95,12 +102,12 @@ export function computeSlots(
   const available: TimeSlot[] = [];
   for (const time of orderedTimes) {
     if (isToday && timeToMinutes(time) <= now.minutes) continue;
-    const occupied = occupiedTableIdsAt(ctx.reservations, ctx.tables, date, time);
+    const occupied = occupiedTableIdsAt(ctx.reservations, ctx.tables, date, time, people);
     const table: Table | null = assignTable(people, ctx.tables, occupied);
     if (table) available.push({ time, table });
   }
 
-  return { open: true, available, full: available.length === 0, largeGroup: false };
+  return { open: true, available, full: available.length === 0, manualReview: false };
 }
 
 /** End-to-end slot lookup: loads hours, tables, and reservations, then computes. */
@@ -109,7 +116,7 @@ export async function getAvailableSlots(
   people: number,
 ): Promise<SlotsResult> {
   if (!isValidDate(date) || people < 1) {
-    return { open: false, available: [], full: false, largeGroup: false };
+    return { open: false, available: [], full: false, manualReview: false };
   }
   const [openingHours, ctx] = await Promise.all([
     fetchOpeningHours(),

@@ -5,6 +5,7 @@ import type {
   RestaurantConfig,
   Table,
 } from "@/types/reservation";
+import type { Locale } from "@/lib/types";
 import { isSheetsConfigured } from "./auth";
 import { readValues } from "./client";
 
@@ -89,6 +90,35 @@ function toInt(value: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Coerces a free-text language cell/env into a supported locale (default "en"). */
+function toLocale(value: string | undefined): Locale {
+  return value?.trim().toLowerCase().startsWith("pt") ? "pt" : "en";
+}
+
+// Sheet-independent contact fallbacks. The restaurant's phone/email normally live
+// in the config sheet, but fail-safe mode needs them precisely when that sheet is
+// unreachable — so these read from the environment instead.
+export function fallbackNotificationEmail(): string {
+  return process.env.RESERVATION_NOTIFICATION_EMAIL?.trim() || "";
+}
+export function fallbackPhone(): string {
+  return process.env.RESERVATION_PHONE?.trim() || "";
+}
+export function fallbackLanguage(): Locale {
+  return toLocale(process.env.RESTAURANT_LANGUAGE);
+}
+
+/** A best-effort restaurant config built purely from env — used when Sheets is down. */
+export function fallbackRestaurantConfig(): RestaurantConfig {
+  return {
+    restaurant_name: process.env.RESTAURANT_NAME?.trim() || DEMO_CONFIG.restaurant_name,
+    notification_email: fallbackNotificationEmail() || DEMO_CONFIG.notification_email,
+    phone: fallbackPhone(),
+    whatsapp: "",
+    restaurant_language: fallbackLanguage(),
+  };
+}
+
 // Google Sheets, read with UNFORMATTED_VALUE, returns time-formatted cells as a
 // fraction of a day (0.875 → 21:00) and date-formatted cells as a serial day
 // number (days since 1899-12-30). Because opening hours and tables are entered
@@ -139,9 +169,11 @@ export async function fetchRestaurantConfig(): Promise<RestaurantConfig> {
   const row = rows[0] ?? {};
   return {
     restaurant_name: row.restaurant_name || DEMO_CONFIG.restaurant_name,
-    notification_email: row.notification_email || DEMO_CONFIG.notification_email,
-    phone: row.phone || "",
+    notification_email:
+      row.notification_email || fallbackNotificationEmail() || DEMO_CONFIG.notification_email,
+    phone: row.phone || fallbackPhone(),
     whatsapp: row.whatsapp || "",
+    restaurant_language: toLocale(row.restaurant_language || process.env.RESTAURANT_LANGUAGE),
   };
 }
 
@@ -186,6 +218,7 @@ export async function fetchReservations(): Promise<ReservationRow[]> {
       time: parseSheetTime(r.time),
       assigned_table: r.assigned_table,
       status: toStatus(r.status),
+      customer_language: toLocale(r.customer_language),
       _rowNumber: i + 2,
     }))
     // Keep system bookings (have an id) and owner-entered manual rows, which may
@@ -202,6 +235,7 @@ const DEMO_CONFIG: RestaurantConfig = {
   notification_email: "reservas@example.com",
   phone: "+351 912 000 000",
   whatsapp: "https://wa.me/351912000000",
+  restaurant_language: "en",
 };
 
 const DEMO_TABLES: Table[] = [

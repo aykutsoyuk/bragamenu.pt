@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAvailableSlots, isValidDate } from "@/lib/reservations";
 import { MAX_PARTY_SIZE } from "@/lib/reservations/constants";
+import { fallbackPhone } from "@/lib/googleSheets";
 
 // POST /api/reservations/availability
 // Body: { people: number, date: "YYYY-MM-DD" }
@@ -29,11 +30,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       open: result.open,
       full: result.full,
-      largeGroup: result.largeGroup,
+      manualReview: result.manualReview,
       slots: result.available.map((s) => s.time),
     });
   } catch (err) {
+    // Sheets unreachable → fail-safe mode. Never fall back to demo/fake
+    // availability in a configured deployment; tell the client to offer the
+    // call/callback options instead, with a Sheet-independent phone number.
     console.error("[availability] failed:", err);
-    return NextResponse.json({ error: "server_error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "service_unavailable", phone: fallbackPhone() },
+      { status: 503 },
+    );
   }
 }

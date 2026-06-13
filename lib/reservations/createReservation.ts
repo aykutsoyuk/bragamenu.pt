@@ -51,7 +51,13 @@ export async function createReservation(
   if (!isBookable) return { ok: false, reason: "unavailable" };
 
   // Re-run best-fit against live occupancy for the exact slot.
-  const occupied = occupiedTableIdsAt(ctx.reservations, ctx.tables, input.date, input.time);
+  const occupied = occupiedTableIdsAt(
+    ctx.reservations,
+    ctx.tables,
+    input.date,
+    input.time,
+    input.people,
+  );
   const table = assignTable(input.people, ctx.tables, occupied);
   if (!table) return { ok: false, reason: "unavailable" };
 
@@ -66,6 +72,7 @@ export async function createReservation(
     time: input.time,
     assigned_table: table.table_id,
     status: "pending",
+    customer_language: input.customer_language ?? "en",
   };
 
   // No-op (returns false) when Sheets is unconfigured so the demo flow completes.
