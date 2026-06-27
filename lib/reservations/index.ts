@@ -1,4 +1,5 @@
 // Public surface of the deterministic reservation engine.
+export type { SheetCtx } from "@/lib/googleSheets";
 export { assignTable } from "./assignTable";
 export {
   loadAvailabilityContext,

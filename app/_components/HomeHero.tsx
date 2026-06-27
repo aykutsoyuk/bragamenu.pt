@@ -81,7 +81,7 @@ export default function HomeHero({ restaurant }: Props) {
 
         <div className="mt-8 flex w-full flex-col gap-3">
           <Link
-            href={`/${restaurant.slug}?lang=${locale}`}
+            href={`/${restaurant.slug}/menu?lang=${locale}`}
             onClick={handleEnter}
             className="inline-flex w-full items-center justify-center rounded-full bg-foreground px-6 py-4 text-base font-medium text-background shadow-[var(--shadow-card)] transition-transform hover:-translate-y-0.5"
           >
@@ -102,6 +102,7 @@ export default function HomeHero({ restaurant }: Props) {
           <ReservationButton
             restaurantName={restaurant.name}
             locale={locale}
+            slug={restaurant.slug}
             variant="block"
           />
         </div>

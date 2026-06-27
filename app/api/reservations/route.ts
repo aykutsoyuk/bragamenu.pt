@@ -5,6 +5,7 @@ import { fetchRestaurantConfig, fallbackPhone } from "@/lib/googleSheets";
 import { sendReservationRequest } from "@/lib/email";
 import { verifyTurnstile } from "@/lib/security/turnstile";
 import { clientIp } from "@/lib/security/clientIp";
+import { getRestaurant, toSheetCtx } from "@/lib/restaurants";
 
 /** Resolves the public origin for email action links, honouring proxies. */
 function resolveBaseUrl(request: NextRequest): string {
@@ -19,12 +20,19 @@ function resolveBaseUrl(request: NextRequest): string {
 
 // POST /api/reservations — create a pending reservation request.
 export async function POST(request: NextRequest) {
-  let body: Partial<ReservationInput> & { turnstileToken?: string };
+  let body: Partial<ReservationInput> & { turnstileToken?: string; slug?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
+
+  const slug = String(body.slug ?? "").trim();
+  const restaurant = slug ? getRestaurant(slug) : null;
+  if (!restaurant) {
+    return NextResponse.json({ error: "unknown_restaurant" }, { status: 404 });
+  }
+  const ctx = toSheetCtx(restaurant);
 
   // Bot protection (skipped when Turnstile is unconfigured or in local dev).
   const turnstile = await verifyTurnstile(String(body.turnstileToken ?? ""), clientIp(request));
@@ -44,12 +52,12 @@ export async function POST(request: NextRequest) {
 
   let result;
   try {
-    result = await createReservation(input);
+    result = await createReservation(ctx, input);
   } catch (err) {
     // Sheets unreachable → fail-safe mode (never silently drop the booking).
     console.error("[reservations] create failed:", err);
     return NextResponse.json(
-      { error: "service_unavailable", phone: fallbackPhone() },
+      { error: "service_unavailable", phone: fallbackPhone(ctx) },
       { status: 503 },
     );
   }
@@ -64,8 +72,8 @@ export async function POST(request: NextRequest) {
   // Notify the restaurant. Email delivery is best-effort: a failure here must not
   // undo a reservation that is already recorded in the sheet.
   try {
-    const config = await fetchRestaurantConfig();
-    await sendReservationRequest(reservation, config, resolveBaseUrl(request));
+    const config = await fetchRestaurantConfig(ctx);
+    await sendReservationRequest(reservation, config, resolveBaseUrl(request), slug);
   } catch (err) {
     console.error("[reservations] notification email failed:", err);
   }

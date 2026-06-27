@@ -2,8 +2,8 @@ import crypto from "node:crypto";
 import type { ReservationStatus } from "@/types/reservation";
 
 // Confirm / reject links arrive over email with no session, so each action is
-// authenticated by an HMAC token bound to the reservation id and the action.
-// Only "confirmed" and "rejected" are valid actions (never "pending").
+// authenticated by an HMAC token bound to the reservation id, the action, and
+// the restaurant slug. Only "confirmed" and "rejected" are valid actions.
 
 export type ReservationAction = Extract<
   ReservationStatus,
@@ -23,26 +23,28 @@ function secret(): string {
   return value;
 }
 
-function sign(reservationId: string, action: ReservationAction): string {
+function sign(reservationId: string, action: ReservationAction, slug: string): string {
   return crypto
     .createHmac("sha256", secret())
-    .update(`${reservationId}:${action}`)
+    .update(`${reservationId}:${action}:${slug}`)
     .digest("base64url");
 }
 
 export function createActionToken(
   reservationId: string,
   action: ReservationAction,
+  slug: string,
 ): string {
-  return sign(reservationId, action);
+  return sign(reservationId, action, slug);
 }
 
 export function verifyActionToken(
   reservationId: string,
   action: ReservationAction,
   token: string,
+  slug: string,
 ): boolean {
-  const expected = sign(reservationId, action);
+  const expected = sign(reservationId, action, slug);
   const a = Buffer.from(expected);
   const b = Buffer.from(token);
   return a.length === b.length && crypto.timingSafeEqual(a, b);

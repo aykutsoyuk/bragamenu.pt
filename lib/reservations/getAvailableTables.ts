@@ -1,5 +1,5 @@
 import type { Reservation, Table } from "@/types/reservation";
-import { fetchReservations, fetchTables } from "@/lib/googleSheets";
+import { fetchReservations, fetchTables, type SheetCtx } from "@/lib/googleSheets";
 import { assignTable } from "./assignTable";
 import { reservationDurationFor } from "./constants";
 import { timeToMinutes } from "./time";
@@ -81,10 +81,10 @@ export interface AvailabilityContext {
 }
 
 /** Loads tables and reservations once so slot calculation can reuse them. */
-export async function loadAvailabilityContext(): Promise<AvailabilityContext> {
+export async function loadAvailabilityContext(ctx: SheetCtx): Promise<AvailabilityContext> {
   const [tables, reservations] = await Promise.all([
-    fetchTables(),
-    fetchReservations(),
+    fetchTables(ctx),
+    fetchReservations(ctx),
   ]);
   return { tables, reservations };
 }

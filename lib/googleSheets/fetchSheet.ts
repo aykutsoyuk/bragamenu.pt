@@ -6,7 +6,7 @@ import type {
   Table,
 } from "@/types/reservation";
 import type { Locale } from "@/lib/types";
-import { isSheetsConfigured } from "./auth";
+import { isSheetsConfigured, type SheetCtx } from "./auth";
 import { readValues } from "./client";
 
 // Reads each backing sheet and maps its header row onto typed objects. When the
@@ -18,6 +18,7 @@ export const SHEET_TABS = {
   tables: "tables",
   reservations: "reservations",
   openingHours: "opening_hours",
+  serviceRequests: "ServiceRequests",
 } as const;
 
 /** Header order of the reservations sheet — also the append/update column order. */
@@ -40,8 +41,8 @@ type Row = Record<string, string>;
  * Reads a whole tab (columns A:Z) and returns objects keyed by the header row,
  * lowercased and trimmed. Empty rows are skipped.
  */
-export async function fetchSheet(tab: string): Promise<Row[]> {
-  const values = await readValues(`${tab}!A:Z`);
+export async function fetchSheet(ctx: SheetCtx, tab: string): Promise<Row[]> {
+  const values = await readValues(ctx.sheetId, `${tab}!A:Z`);
   if (values.length < 2) return [];
 
   const headers = values[0].map((h) => h.trim().toLowerCase());
@@ -63,8 +64,8 @@ export async function fetchSheet(tab: string): Promise<Row[]> {
  * assuming a fixed layout, so reordering columns in the sheet never lands data
  * under the wrong header.
  */
-export async function fetchReservationHeaders(): Promise<string[]> {
-  const values = await readValues(`${SHEET_TABS.reservations}!1:1`);
+export async function fetchReservationHeaders(ctx: SheetCtx): Promise<string[]> {
+  const values = await readValues(ctx.sheetId, `${SHEET_TABS.reservations}!1:1`);
   return (values[0] ?? []).map((h) => h.trim().toLowerCase());
 }
 
@@ -81,7 +82,7 @@ export function columnLetter(index: number): string {
 
 function toStatus(value: string): ReservationStatus {
   const v = value.trim().toLowerCase();
-  if (v === "confirmed" || v === "rejected") return v;
+  if (v === "confirmed" || v === "rejected" || v === "cancelled") return v;
   return "pending";
 }
 
@@ -97,25 +98,25 @@ function toLocale(value: string | undefined): Locale {
 
 // Sheet-independent contact fallbacks. The restaurant's phone/email normally live
 // in the config sheet, but fail-safe mode needs them precisely when that sheet is
-// unreachable — so these read from the environment instead.
-export function fallbackNotificationEmail(): string {
-  return process.env.RESERVATION_NOTIFICATION_EMAIL?.trim() || "";
+// unreachable — so these read from the environment (or ctx overrides) instead.
+export function fallbackNotificationEmail(ctx?: SheetCtx): string {
+  return ctx?.notificationEmail || process.env.RESERVATION_NOTIFICATION_EMAIL?.trim() || "";
 }
-export function fallbackPhone(): string {
-  return process.env.RESERVATION_PHONE?.trim() || "";
+export function fallbackPhone(ctx?: SheetCtx): string {
+  return ctx?.phone || process.env.RESERVATION_PHONE?.trim() || "";
 }
-export function fallbackLanguage(): Locale {
-  return toLocale(process.env.RESTAURANT_LANGUAGE);
+export function fallbackLanguage(ctx?: SheetCtx): Locale {
+  return toLocale(ctx?.language || process.env.RESTAURANT_LANGUAGE);
 }
 
-/** A best-effort restaurant config built purely from env — used when Sheets is down. */
-export function fallbackRestaurantConfig(): RestaurantConfig {
+/** A best-effort restaurant config built from ctx overrides and env — used when Sheets is down. */
+export function fallbackRestaurantConfig(ctx?: SheetCtx): RestaurantConfig {
   return {
     restaurant_name: process.env.RESTAURANT_NAME?.trim() || DEMO_CONFIG.restaurant_name,
-    notification_email: fallbackNotificationEmail() || DEMO_CONFIG.notification_email,
-    phone: fallbackPhone(),
+    notification_email: fallbackNotificationEmail(ctx) || DEMO_CONFIG.notification_email,
+    phone: fallbackPhone(ctx),
     whatsapp: "",
-    restaurant_language: fallbackLanguage(),
+    restaurant_language: fallbackLanguage(ctx),
   };
 }
 
@@ -163,31 +164,31 @@ function parseSheetDate(raw: string): string {
   return s;
 }
 
-export async function fetchRestaurantConfig(): Promise<RestaurantConfig> {
-  if (!isSheetsConfigured()) return DEMO_CONFIG;
-  const rows = await fetchSheet(SHEET_TABS.config);
+export async function fetchRestaurantConfig(ctx: SheetCtx): Promise<RestaurantConfig> {
+  if (!isSheetsConfigured()) return fallbackRestaurantConfig(ctx);
+  const rows = await fetchSheet(ctx, SHEET_TABS.config);
   const row = rows[0] ?? {};
   return {
     restaurant_name: row.restaurant_name || DEMO_CONFIG.restaurant_name,
     notification_email:
-      row.notification_email || fallbackNotificationEmail() || DEMO_CONFIG.notification_email,
-    phone: row.phone || fallbackPhone(),
+      row.notification_email || fallbackNotificationEmail(ctx) || DEMO_CONFIG.notification_email,
+    phone: row.phone || fallbackPhone(ctx),
     whatsapp: row.whatsapp || "",
-    restaurant_language: toLocale(row.restaurant_language || process.env.RESTAURANT_LANGUAGE),
+    restaurant_language: toLocale(row.restaurant_language || ctx.language || process.env.RESTAURANT_LANGUAGE),
   };
 }
 
-export async function fetchTables(): Promise<Table[]> {
+export async function fetchTables(ctx: SheetCtx): Promise<Table[]> {
   if (!isSheetsConfigured()) return DEMO_TABLES;
-  const rows = await fetchSheet(SHEET_TABS.tables);
+  const rows = await fetchSheet(ctx, SHEET_TABS.tables);
   return rows
     .map((r) => ({ table_id: r.table_id, capacity: toInt(r.capacity) }))
     .filter((t) => t.table_id && t.capacity > 0);
 }
 
-export async function fetchOpeningHours(): Promise<OpeningHours[]> {
+export async function fetchOpeningHours(ctx: SheetCtx): Promise<OpeningHours[]> {
   if (!isSheetsConfigured()) return DEMO_HOURS;
-  const rows = await fetchSheet(SHEET_TABS.openingHours);
+  const rows = await fetchSheet(ctx, SHEET_TABS.openingHours);
   return rows
     .map((r) => ({
       day: r.day.trim().toLowerCase(),
@@ -202,9 +203,9 @@ export interface ReservationRow extends Reservation {
   _rowNumber: number;
 }
 
-export async function fetchReservations(): Promise<ReservationRow[]> {
+export async function fetchReservations(ctx: SheetCtx): Promise<ReservationRow[]> {
   if (!isSheetsConfigured()) return [];
-  const rows = await fetchSheet(SHEET_TABS.reservations);
+  const rows = await fetchSheet(ctx, SHEET_TABS.reservations);
   // Row 1 is the header, so the first data row lives at sheet row 2.
   return rows
     .map((r, i) => ({

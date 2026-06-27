@@ -19,6 +19,7 @@ type Props = {
   onClose: () => void;
   restaurantName: string;
   locale: Locale;
+  slug: string;
   /** Static contact link (e.g. wa.me URL) shown in fail-safe mode. */
   restaurantWhatsapp?: string | null;
 };
@@ -62,6 +63,7 @@ export default function ReservationChat({
   onClose,
   restaurantName,
   locale,
+  slug,
   restaurantWhatsapp,
 }: Props) {
   const copy = getReservationCopy(locale);
@@ -231,7 +233,7 @@ export default function ReservationChat({
         const res = await fetch("/api/reservations/availability", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ people: guests, date: value }),
+          body: JSON.stringify({ people: guests, date: value, slug }),
         });
 
         if (res.status === 503) {
@@ -278,7 +280,7 @@ export default function ReservationChat({
         await assistantTurn([copy.errorBody], "slots");
       }
     },
-    [assistantTurn, copy, enterFailsafe, longDate],
+    [assistantTurn, copy, enterFailsafe, longDate, slug],
   );
 
   const handleDate = useCallback(
@@ -397,7 +399,7 @@ export default function ReservationChat({
     if (isReserve && !time) return;
     setStep("submitting");
 
-    const base = { name, phone, email, people, date, turnstileToken, customer_language: locale };
+    const base = { name, phone, email, people, date, turnstileToken, customer_language: locale, slug };
     let endpoint: string;
     let payload: Record<string, unknown>;
     let successTitle: string;
@@ -473,6 +475,7 @@ export default function ReservationChat({
     name,
     people,
     phone,
+    slug,
     time,
     turnstileToken,
   ]);

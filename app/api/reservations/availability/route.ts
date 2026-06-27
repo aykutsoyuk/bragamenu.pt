@@ -2,17 +2,25 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getAvailableSlots, isValidDate } from "@/lib/reservations";
 import { MAX_PARTY_SIZE } from "@/lib/reservations/constants";
 import { fallbackPhone } from "@/lib/googleSheets";
+import { getRestaurant, toSheetCtx } from "@/lib/restaurants";
 
 // POST /api/reservations/availability
-// Body: { people: number, date: "YYYY-MM-DD" }
+// Body: { slug: string, people: number, date: "YYYY-MM-DD" }
 // Returns the bookable time slots for that party on that date.
 export async function POST(request: NextRequest) {
-  let body: { people?: unknown; date?: unknown };
+  let body: { people?: unknown; date?: unknown; slug?: unknown };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
+
+  const slug = typeof body.slug === "string" ? body.slug.trim() : "";
+  const restaurant = slug ? getRestaurant(slug) : null;
+  if (!restaurant) {
+    return NextResponse.json({ error: "unknown_restaurant" }, { status: 404 });
+  }
+  const ctx = toSheetCtx(restaurant);
 
   const people = Math.trunc(Number(body.people));
   const date = typeof body.date === "string" ? body.date.trim() : "";
@@ -25,7 +33,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await getAvailableSlots(date, people);
+    const result = await getAvailableSlots(ctx, date, people);
     // Only the time strings are sent to the client; table assignment stays server-side.
     return NextResponse.json({
       open: result.open,
@@ -39,7 +47,7 @@ export async function POST(request: NextRequest) {
     // call/callback options instead, with a Sheet-independent phone number.
     console.error("[availability] failed:", err);
     return NextResponse.json(
-      { error: "service_unavailable", phone: fallbackPhone() },
+      { error: "service_unavailable", phone: fallbackPhone(ctx) },
       { status: 503 },
     );
   }

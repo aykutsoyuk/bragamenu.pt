@@ -4,11 +4,10 @@ import { fetchRestaurantConfig, fallbackRestaurantConfig } from "@/lib/googleShe
 import { sendCallbackRequest, isEmailConfigured } from "@/lib/email";
 import { verifyTurnstile } from "@/lib/security/turnstile";
 import { clientIp } from "@/lib/security/clientIp";
+import { getRestaurant, toSheetCtx } from "@/lib/restaurants";
 
 // POST /api/reservations/callback
-// Fail-safe path used when the reservation system can't reach Google Sheets. The
-// customer leaves their details and we email the restaurant directly — the email
-// is the record, since the sheet is unreachable.
+// Fail-safe path used when the reservation system can't reach Google Sheets.
 export async function POST(request: NextRequest) {
   let body: unknown;
   try {
@@ -16,6 +15,13 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
+
+  const slug = String((body as { slug?: string })?.slug ?? "").trim();
+  const restaurant = slug ? getRestaurant(slug) : null;
+  if (!restaurant) {
+    return NextResponse.json({ error: "unknown_restaurant" }, { status: 404 });
+  }
+  const ctx = toSheetCtx(restaurant);
 
   const token = String((body as { turnstileToken?: string })?.turnstileToken ?? "");
   const turnstile = await verifyTurnstile(token, clientIp(request));
@@ -28,13 +34,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: validated.error }, { status: 400 });
   }
 
-  // Try the live config, but fall back to env-derived contact details — the sheet
-  // being down is exactly why this endpoint exists.
   let config;
   try {
-    config = await fetchRestaurantConfig();
+    config = await fetchRestaurantConfig(ctx);
   } catch {
-    config = fallbackRestaurantConfig();
+    config = fallbackRestaurantConfig(ctx);
   }
 
   try {

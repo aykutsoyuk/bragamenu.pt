@@ -4,6 +4,7 @@ import { fetchRestaurantConfig } from "@/lib/googleSheets";
 import { sendManualReviewRequest, isEmailConfigured } from "@/lib/email";
 import { verifyTurnstile } from "@/lib/security/turnstile";
 import { clientIp } from "@/lib/security/clientIp";
+import { getRestaurant, toSheetCtx } from "@/lib/restaurants";
 
 // POST /api/reservations/manual-review
 // Captures contact details for parties that can't be auto-assigned a table (but
@@ -17,6 +18,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
 
+  const slug = String((body as { slug?: string })?.slug ?? "").trim();
+  const restaurant = slug ? getRestaurant(slug) : null;
+  if (!restaurant) {
+    return NextResponse.json({ error: "unknown_restaurant" }, { status: 404 });
+  }
+  const ctx = toSheetCtx(restaurant);
+
   const token = String((body as { turnstileToken?: string })?.turnstileToken ?? "");
   const turnstile = await verifyTurnstile(token, clientIp(request));
   if (!turnstile.success) {
@@ -28,11 +36,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: validated.error }, { status: 400 });
   }
 
-  // Unlike a booking there is no sheet record to fall back on, so when email is
-  // actually configured a delivery failure must surface as an error. When email
-  // is unconfigured (local/demo) we still report success so the flow completes.
   try {
-    const config = await fetchRestaurantConfig();
+    const config = await fetchRestaurantConfig(ctx);
     const result = await sendManualReviewRequest(validated.value, config);
     if (isEmailConfigured() && !result.sent) {
       return NextResponse.json({ error: "server_error" }, { status: 500 });

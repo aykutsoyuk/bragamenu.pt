@@ -95,6 +95,7 @@ export default function RestaurantHeader({ restaurant, locale }: Props) {
             <ReservationButton
               restaurantName={restaurant.name}
               locale={locale}
+              slug={restaurant.slug}
               restaurantWhatsapp={restaurant.whatsapp}
             />
             {restaurant.instagram && (

@@ -1,5 +1,5 @@
 import type { OpeningHours, Table, TimeSlot } from "@/types/reservation";
-import { fetchOpeningHours } from "@/lib/googleSheets";
+import { fetchOpeningHours, type SheetCtx } from "@/lib/googleSheets";
 import { assignTable } from "./assignTable";
 import {
   BOOKING_WINDOW_DAYS,
@@ -112,6 +112,7 @@ export function computeSlots(
 
 /** End-to-end slot lookup: loads hours, tables, and reservations, then computes. */
 export async function getAvailableSlots(
+  sheetCtx: SheetCtx,
   date: string,
   people: number,
 ): Promise<SlotsResult> {
@@ -119,8 +120,8 @@ export async function getAvailableSlots(
     return { open: false, available: [], full: false, manualReview: false };
   }
   const [openingHours, ctx] = await Promise.all([
-    fetchOpeningHours(),
-    loadAvailabilityContext(),
+    fetchOpeningHours(sheetCtx),
+    loadAvailabilityContext(sheetCtx),
   ]);
   return computeSlots(date, people, openingHours, ctx);
 }
