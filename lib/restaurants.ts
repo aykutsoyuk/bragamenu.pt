@@ -1,42 +1,59 @@
-import type { Restaurant } from "./types";
+import type { Locale, Restaurant, RestaurantRecord } from "./types";
+import type { SheetCtx } from "./googleSheets";
+import data from "../data/restaurants.json";
 
-// Lightweight restaurant registry. Add new restaurants here.
-// In a future iteration this could move to the same Google Sheet.
-const restaurants: Record<string, Restaurant> = {
-  braga: {
-    slug: "braga",
-    name: "Casa de Braga",
-    tagline: {
-      en: "Northern Portuguese kitchen, by the river.",
-      pt: "Cozinha do Norte de Portugal, à beira-rio.",
-    },
-    logo: null,
-    cover:
-      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1600&q=80",
-    instagram: "https://instagram.com/casadebraga",
-    whatsapp: "https://wa.me/351912",
-  },
-};
+// Sensitive operational fields are NOT in JSON — they live in env vars to keep
+// secrets out of the repository. Pattern: <VAR>_<SLUG_UPPERCASE>
+type JsonRow = Omit<RestaurantRecord, "sheetId" | "menuUrl" | "dashboardKey">;
+const rawRegistry = data as Record<string, JsonRow>;
 
-export function getRestaurant(slug: string): Restaurant {
-  return (
-    restaurants[slug] ?? {
-      slug,
-      name: slug
-        .split("-")
-        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-        .join(" "),
-      tagline: {
-        en: "A taste of Portugal, one bite at a time.",
-        pt: "Um sabor de Portugal, dentada a dentada.",
-      },
-      logo: null,
-      cover:
-        "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1600&q=80",
-      instagram: null,
-      whatsapp: null,
-    }
-  );
+function env(prefix: string, slug: string): string {
+  return process.env[`${prefix}_${slug.toUpperCase()}`] ?? "";
+}
+
+function hydrate(row: JsonRow): RestaurantRecord {
+  return {
+    ...row,
+    sheetId: env("SHEET_ID", row.slug),
+    menuUrl: env("MENU_URL", row.slug),
+    dashboardKey: env("DASHBOARD_KEY", row.slug),
+  };
+}
+
+/** Returns the full restaurant record, or null for unknown slugs. */
+export function getRestaurant(slug: string): RestaurantRecord | null {
+  const row = rawRegistry[slug];
+  if (!row) return null;
+  return hydrate(row);
+}
+
+/** Strips secret/operational fields for safe use in client components. */
+export function toBranding(r: RestaurantRecord): Restaurant {
+  return {
+    slug: r.slug,
+    name: r.name,
+    tagline: r.tagline,
+    logo: r.logo,
+    cover: r.cover,
+    instagram: r.instagram,
+    whatsapp: r.whatsapp,
+  };
+}
+
+/** Builds the SheetCtx for a restaurant (used by the data layer). */
+export function toSheetCtx(r: RestaurantRecord): SheetCtx {
+  return {
+    sheetId: r.sheetId,
+    notificationEmail: r.notificationEmail,
+    phone: r.phone,
+    language: r.language as Locale | undefined,
+    timezone: r.timezone,
+  };
 }
 
 export const defaultRestaurantSlug = "braga";
+
+/** All registered restaurants (used by the cron to iterate tenants). */
+export function getAllRestaurants(): RestaurantRecord[] {
+  return Object.values(rawRegistry).map(hydrate);
+}

@@ -3,7 +3,7 @@
 
 import type { Locale } from "@/lib/types";
 
-export type ReservationStatus = "pending" | "confirmed" | "rejected";
+export type ReservationStatus = "pending" | "confirmed" | "rejected" | "cancelled";
 
 /** Sheet: restaurant_config (single row). */
 export interface RestaurantConfig {

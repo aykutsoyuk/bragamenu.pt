@@ -1,18 +1,15 @@
-import { fetchMenu, groupByCategory } from "@/lib/sheets";
-import { getRestaurant } from "@/lib/restaurants";
-import MenuView from "./_components/MenuView";
+import { notFound } from "next/navigation";
+import { getRestaurant, toBranding } from "@/lib/restaurants";
+import HomeHero from "@/app/_components/HomeHero";
 
-export const revalidate = 300;
-
-export default async function RestaurantPage({
+export default async function RestaurantHomePage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
   const restaurant = getRestaurant(slug);
-  const items = await fetchMenu();
-  const categories = groupByCategory(items);
+  if (!restaurant) notFound();
 
-  return <MenuView restaurant={restaurant} categories={categories} />;
+  return <HomeHero restaurant={toBranding(restaurant)} />;
 }

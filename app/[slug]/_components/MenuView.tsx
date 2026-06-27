@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   DEFAULT_LOCALE,
   LOCALES,
@@ -12,6 +13,7 @@ import {
 import type { Locale, MenuCategory, Restaurant } from "@/lib/types";
 import RestaurantHeader from "./RestaurantHeader";
 import ProductCard from "./ProductCard";
+import ServiceRequestButtons from "./ServiceRequestButtons";
 
 type Props = {
   restaurant: Restaurant;
@@ -23,6 +25,20 @@ export default function MenuView({ restaurant, categories }: Props) {
   const [activeKey, setActiveKey] = useState<string>(categories[0]?.key ?? "");
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
   const scrollLockUntil = useRef<number>(0);
+  const searchParams = useSearchParams();
+
+  // Persist table number from URL into sessionStorage for service requests.
+  const [tableNumber, setTableNumber] = useState<string>("");
+  useEffect(() => {
+    const tableFromUrl = searchParams.get("table");
+    if (tableFromUrl) {
+      sessionStorage.setItem("bm:table", tableFromUrl);
+      setTableNumber(tableFromUrl);
+    } else {
+      const stored = sessionStorage.getItem("bm:table") ?? "";
+      setTableNumber(stored);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -100,6 +116,7 @@ export default function MenuView({ restaurant, categories }: Props) {
         locale={locale}
         onLocaleChange={handleLocaleChange}
         restaurantName={restaurant.name}
+        restaurantSlug={restaurant.slug}
       />
 
       <RestaurantHeader restaurant={restaurant} locale={locale} />
@@ -132,6 +149,12 @@ export default function MenuView({ restaurant, categories }: Props) {
             </ul>
           </div>
         </nav>
+      )}
+
+      {tableNumber && (
+        <div className="mx-auto max-w-2xl px-5 pt-6 sm:px-6">
+          <ServiceRequestButtons slug={restaurant.slug} table={tableNumber} locale={locale} />
+        </div>
       )}
 
       <div className="mx-auto max-w-2xl px-5 sm:px-6">
@@ -178,15 +201,17 @@ function TopBar({
   locale,
   onLocaleChange,
   restaurantName,
+  restaurantSlug,
 }: {
   locale: Locale;
   onLocaleChange: (l: Locale) => void;
   restaurantName: string;
+  restaurantSlug: string;
 }) {
   return (
     <div className="sticky top-0 z-40 flex h-[3.25rem] items-center justify-between border-b border-border bg-background/85 px-4 backdrop-blur sm:px-6">
       <Link
-        href="/"
+        href={`/${restaurantSlug}`}
         className="text-xs font-medium uppercase tracking-[0.22em] text-muted transition-colors hover:text-foreground"
       >
         ← {restaurantName}

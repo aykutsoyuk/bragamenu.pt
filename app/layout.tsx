@@ -16,9 +16,19 @@ const serif = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Braga Menu — Digital Restaurant Menu",
+  metadataBase: new URL("https://menuqr.pt"),
+  title: "MenuQR — Digital Menus & Reservations for Restaurants",
   description:
-    "A modern, minimal QR menu for restaurants in Portugal. Built for tourists, brunchers, and curious diners.",
+    "Stop losing reservations. Help tourists understand your menu. A simple digital QR menu and reservation system designed for busy restaurants in Portugal.",
+  openGraph: {
+    title: "MenuQR — Digital Menus & Reservations for Restaurants",
+    description:
+      "Stop losing reservations. Help tourists understand your menu. A simple digital QR menu and reservation system designed for busy restaurants in Portugal.",
+    url: "https://menuqr.pt",
+    siteName: "MenuQR",
+    locale: "pt_PT",
+    type: "website",
+  },
 };
 
 export const viewport: Viewport = {

@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import type { Locale } from "@/lib/types";
 
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
@@ -6,10 +7,18 @@ const JWT_LIFETIME_SECONDS = 3600;
 // Refresh a minute early so a token never expires mid-request.
 const EXPIRY_SKEW_SECONDS = 60;
 
+/** Per-restaurant context threaded through the data layer instead of env globals. */
+export interface SheetCtx {
+  sheetId: string;
+  notificationEmail?: string;
+  phone?: string;
+  language?: Locale;
+  timezone?: string;
+}
+
 export interface SheetsCredentials {
   email: string;
   privateKey: string;
-  sheetId: string;
 }
 
 let cachedToken: { value: string; expiresAt: number } | null = null;
@@ -21,12 +30,11 @@ let cachedToken: { value: string; expiresAt: number } | null = null;
  */
 export function getCredentials(): SheetsCredentials | null {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim();
-  const sheetId = process.env.GOOGLE_SHEET_ID?.trim();
   // Private keys are usually stored with literal "\n" sequences in env vars.
   const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n").trim();
 
-  if (!email || !sheetId || !privateKey) return null;
-  return { email, privateKey, sheetId };
+  if (!email || !privateKey) return null;
+  return { email, privateKey };
 }
 
 export function isSheetsConfigured(): boolean {

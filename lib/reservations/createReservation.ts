@@ -4,6 +4,7 @@ import {
   appendReservation,
   fetchOpeningHours,
   isSheetsConfigured,
+  type SheetCtx,
 } from "@/lib/googleSheets";
 import { assignTable } from "./assignTable";
 import { BOOKING_WINDOW_DAYS } from "./constants";
@@ -26,6 +27,7 @@ export type CreateReservationResult =
  * than trusting the client, so this is the single authority for table holds.
  */
 export async function createReservation(
+  ctx: SheetCtx,
   raw: ReservationInput,
 ): Promise<CreateReservationResult> {
   const validated = validateReservationInput(raw);
@@ -39,26 +41,26 @@ export async function createReservation(
     return { ok: false, reason: "invalid" };
   }
 
-  const [openingHours, ctx] = await Promise.all([
-    fetchOpeningHours(),
-    loadAvailabilityContext(),
+  const [openingHours, availCtx] = await Promise.all([
+    fetchOpeningHours(ctx),
+    loadAvailabilityContext(ctx),
   ]);
 
   // The requested time must be a real seating for that day (and still future).
-  const slots = computeSlots(input.date, input.people, openingHours, ctx);
+  const slots = computeSlots(input.date, input.people, openingHours, availCtx);
   if (!slots.open) return { ok: false, reason: "closed" };
   const isBookable = slots.available.some((s) => s.time === input.time);
   if (!isBookable) return { ok: false, reason: "unavailable" };
 
   // Re-run best-fit against live occupancy for the exact slot.
   const occupied = occupiedTableIdsAt(
-    ctx.reservations,
-    ctx.tables,
+    availCtx.reservations,
+    availCtx.tables,
     input.date,
     input.time,
     input.people,
   );
-  const table = assignTable(input.people, ctx.tables, occupied);
+  const table = assignTable(input.people, availCtx.tables, occupied);
   if (!table) return { ok: false, reason: "unavailable" };
 
   const reservation: Reservation = {
@@ -77,7 +79,7 @@ export async function createReservation(
 
   // No-op (returns false) when Sheets is unconfigured so the demo flow completes.
   const persisted = isSheetsConfigured()
-    ? await appendReservation(reservation)
+    ? await appendReservation(ctx, reservation)
     : false;
 
   return { ok: true, reservation, persisted };

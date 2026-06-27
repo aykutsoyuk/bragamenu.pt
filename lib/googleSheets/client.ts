@@ -1,4 +1,4 @@
-import { getAccessToken, getCredentials } from "./auth";
+import { getAccessToken } from "./auth";
 
 // Thin wrapper over the Google Sheets API v4 `values` endpoints. Each function
 // handles auth, request shaping, and error surfacing so higher layers can work
@@ -22,12 +22,9 @@ async function authHeaders(): Promise<Record<string, string>> {
  * Reads a rectangular range as rows of cell strings. Missing trailing cells are
  * returned as-is by the API (short rows), so callers must tolerate ragged rows.
  */
-export async function readValues(range: string): Promise<string[][]> {
-  const creds = getCredentials();
-  if (!creds) throw new Error("Google Sheets credentials are not configured.");
-
+export async function readValues(sheetId: string, range: string): Promise<string[][]> {
   const url = spreadsheetUrl(
-    creds.sheetId,
+    sheetId,
     `/values/${encodeURIComponent(range)}?valueRenderOption=UNFORMATTED_VALUE`,
   );
   const res = await fetch(url, {
@@ -43,12 +40,9 @@ export async function readValues(range: string): Promise<string[][]> {
 }
 
 /** Appends a single row to the end of the given sheet/table. */
-export async function appendRow(range: string, row: string[]): Promise<void> {
-  const creds = getCredentials();
-  if (!creds) throw new Error("Google Sheets credentials are not configured.");
-
+export async function appendRow(sheetId: string, range: string, row: string[]): Promise<void> {
   const url = spreadsheetUrl(
-    creds.sheetId,
+    sheetId,
     `/values/${encodeURIComponent(range)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
   );
   const res = await fetch(url, {
@@ -64,12 +58,9 @@ export async function appendRow(range: string, row: string[]): Promise<void> {
 }
 
 /** Overwrites the cells at an exact range (e.g. "reservations!A5:J5"). */
-export async function updateRange(range: string, row: string[]): Promise<void> {
-  const creds = getCredentials();
-  if (!creds) throw new Error("Google Sheets credentials are not configured.");
-
+export async function updateRange(sheetId: string, range: string, row: string[]): Promise<void> {
   const url = spreadsheetUrl(
-    creds.sheetId,
+    sheetId,
     `/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
   );
   const res = await fetch(url, {

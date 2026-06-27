@@ -1,5 +1,5 @@
 import type { Reservation } from "@/types/reservation";
-import { isSheetsConfigured } from "./auth";
+import { isSheetsConfigured, type SheetCtx } from "./auth";
 import { appendRow } from "./client";
 import {
   RESERVATION_COLUMNS,
@@ -8,10 +8,10 @@ import {
   fetchReservationHeaders,
 } from "./fetchSheet";
 
-export async function appendReservation(reservation: Reservation): Promise<boolean> {
+export async function appendReservation(ctx: SheetCtx, reservation: Reservation): Promise<boolean> {
   if (!isSheetsConfigured()) return false;
 
-  const headers = await fetchReservationHeaders();
+  const headers = await fetchReservationHeaders(ctx);
   // Fall back to the documented order if the header row is somehow empty.
   const order = headers.length > 0 ? headers : [...RESERVATION_COLUMNS];
 
@@ -21,6 +21,6 @@ export async function appendReservation(reservation: Reservation): Promise<boole
   });
 
   const lastCol = columnLetter(order.length - 1);
-  await appendRow(`${SHEET_TABS.reservations}!A:${lastCol}`, row);
+  await appendRow(ctx.sheetId, `${SHEET_TABS.reservations}!A:${lastCol}`, row);
   return true;
 }

@@ -2,8 +2,9 @@ import { type NextRequest } from "next/server";
 import { fetchRestaurantConfig, updateReservationStatus } from "@/lib/googleSheets";
 import { sendConfirmationEmail, sendRejectionEmail } from "@/lib/email";
 import { verifyActionToken, type ReservationAction } from "@/lib/reservations";
+import { getRestaurant, toSheetCtx } from "@/lib/restaurants";
 
-// GET /api/reservations/action?id=...&action=confirmed|rejected&token=...
+// GET /api/reservations/action?id=...&action=confirmed|rejected&token=...&slug=...
 // Invoked by the restaurant from the notification email. Verifies the signed
 // token, flips the reservation status, and emails the customer. Renders a small
 // HTML page so the restaurateur gets visible feedback in their browser.
@@ -42,12 +43,19 @@ export async function GET(request: NextRequest) {
   const id = params.get("id") ?? "";
   const action = params.get("action") ?? "";
   const token = params.get("token") ?? "";
+  const slug = params.get("slug") ?? "";
 
-  if (!id || !isAction(action) || !token) {
+  if (!id || !isAction(action) || !token || !slug) {
     return page("Invalid link", "This action link is malformed or incomplete.", "error");
   }
 
-  if (!verifyActionToken(id, action, token)) {
+  const restaurant = getRestaurant(slug);
+  if (!restaurant) {
+    return page("Invalid link", "This action link is malformed or incomplete.", "error");
+  }
+  const ctx = toSheetCtx(restaurant);
+
+  if (!verifyActionToken(id, action, token, slug)) {
     return page(
       "Link not valid",
       "This link could not be verified. Please use the buttons from the original email.",
@@ -57,7 +65,7 @@ export async function GET(request: NextRequest) {
 
   let result;
   try {
-    result = await updateReservationStatus(id, action);
+    result = await updateReservationStatus(ctx, id, action);
   } catch (err) {
     console.error("[action] update failed:", err);
     return page(
@@ -82,9 +90,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Status changed → notify the customer (best-effort).
   try {
-    const config = await fetchRestaurantConfig();
+    const config = await fetchRestaurantConfig(ctx);
     if (confirmed) {
       await sendConfirmationEmail(reservation, config);
     } else {

@@ -11,13 +11,15 @@ export async function sendReservationRequest(
   reservation: Reservation,
   config: RestaurantConfig,
   baseUrl: string,
+  slug: string,
 ): Promise<SendResult> {
   const actionUrl = (action: "confirmed" | "rejected") => {
-    const token = createActionToken(reservation.reservation_id, action);
+    const token = createActionToken(reservation.reservation_id, action, slug);
     const params = new URLSearchParams({
       id: reservation.reservation_id,
       action,
       token,
+      slug,
     });
     return `${baseUrl}/api/reservations/action?${params.toString()}`;
   };

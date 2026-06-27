@@ -1,5 +1,5 @@
 import type { Reservation, ReservationStatus } from "@/types/reservation";
-import { isSheetsConfigured } from "./auth";
+import { isSheetsConfigured, type SheetCtx } from "./auth";
 import { updateRange } from "./client";
 import {
   SHEET_TABS,
@@ -21,6 +21,7 @@ export interface UpdateResult {
  * Returns null when no matching reservation exists.
  */
 export async function updateReservationStatus(
+  ctx: SheetCtx,
   reservationId: string,
   status: ReservationStatus,
 ): Promise<UpdateResult | null> {
@@ -29,8 +30,8 @@ export async function updateReservationStatus(
   }
 
   const [reservations, headers] = await Promise.all([
-    fetchReservations(),
-    fetchReservationHeaders(),
+    fetchReservations(ctx),
+    fetchReservationHeaders(ctx),
   ]);
   const existing = reservations.find((r) => r.reservation_id === reservationId);
   if (!existing) return null;
@@ -48,6 +49,7 @@ export async function updateReservationStatus(
   const col = columnLetter(statusIndex);
   const rowNumber = existing._rowNumber;
   await updateRange(
+    ctx.sheetId,
     `${SHEET_TABS.reservations}!${col}${rowNumber}:${col}${rowNumber}`,
     [status],
   );

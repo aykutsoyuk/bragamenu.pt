@@ -22,6 +22,7 @@ export type MenuCategory = {
   items: MenuItem[];
 };
 
+/** Branding-only shape — safe to pass to client components. */
 export type Restaurant = {
   slug: string;
   name: string;
@@ -30,4 +31,15 @@ export type Restaurant = {
   cover: string | null;
   instagram: string | null;
   whatsapp: string | null;
+};
+
+/** Full restaurant record including operational fields — never pass to client components. */
+export type RestaurantRecord = Restaurant & {
+  menuUrl: string;     // MENU_URL_<SLUG> env var
+  sheetId: string;     // SHEET_ID_<SLUG> env var
+  dashboardKey: string; // DASHBOARD_KEY_<SLUG> env var
+  notificationEmail?: string;
+  phone?: string;
+  language?: Locale;
+  timezone?: string;
 };
