@@ -34,7 +34,7 @@ export default function FinalCTA({ lang }: { lang: Lang }) {
           </div>
           <div className="flex gap-6 text-sm text-muted">
             {/* <a href="mailto:hello@menuqr.pt" className="hover:text-foreground">Email</a> */}
-            <a href="/braga" className="hover:text-foreground">{t.demo}</a>
+            <a href="/casa-de-braga" className="hover:text-foreground">{t.demo}</a>
             <a href="#contact" className="hover:text-foreground">{t.contact}</a>
           </div>
         </div>

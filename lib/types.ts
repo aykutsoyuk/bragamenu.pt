@@ -14,6 +14,10 @@ export type MenuItem = {
   vegetarian: boolean;
   spicy: boolean;
   available: boolean;
+  calories?: string;
+  allergens?: Localized;
+  winePairing?: Localized;
+  dessertPairing?: Localized;
 };
 
 export type MenuCategory = {
