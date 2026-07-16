@@ -29,6 +29,15 @@ const T = {
     confirmQ: "Confirm this reservation?",
     rejectQ: "Reject this reservation?",
     cancelQ: "Cancel this reservation?",
+    analytics: "Analytics",
+    rangeToday: "Today",
+    rangeWeek: "This Week",
+    rangeMonth: "This Month",
+    totalOpens: "Menu Opens",
+    languageUsage: "Language Usage",
+    mostViewed: "Most Viewed Dishes",
+    leastViewed: "Least Viewed Dishes",
+    noAnalytics: "No analytics data yet.",
   },
   pt: {
     dashboard: "Dashboard",
@@ -47,7 +56,25 @@ const T = {
     confirmQ: "Confirmar esta reserva?",
     rejectQ: "Rejeitar esta reserva?",
     cancelQ: "Cancelar esta reserva?",
+    analytics: "Análises",
+    rangeToday: "Hoje",
+    rangeWeek: "Esta Semana",
+    rangeMonth: "Este Mês",
+    totalOpens: "Aberturas do Menu",
+    languageUsage: "Uso de Idiomas",
+    mostViewed: "Pratos Mais Vistos",
+    leastViewed: "Pratos Menos Vistos",
+    noAnalytics: "Ainda sem dados de análise.",
   },
+};
+
+type AnalyticsRange = "today" | "week" | "month";
+
+type AnalyticsStats = {
+  totalOpens: number;
+  languages: { language: string; count: number; percentage: number }[];
+  topDishes: { dishId: string; title: string; count: number }[];
+  leastDishes: { dishId: string; title: string; count: number }[];
 };
 
 type Props = {
@@ -75,6 +102,8 @@ export default function Dashboard({
   const [showNew, setShowNew] = useState(false);
   const [editTarget, setEditTarget] = useState<Reservation | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [analyticsRange, setAnalyticsRange] = useState<AnalyticsRange>("today");
+  const [analytics, setAnalytics] = useState<AnalyticsStats | null>(null);
   const seenResIds = useRef(new Set(initialReservations.map((r) => r.reservation_id)));
   const seenReqIds = useRef(new Set(initialRequests.map((r) => r.id)));
   const apiBase = `/api/dashboard/${slug}`;
@@ -139,6 +168,23 @@ export default function Dashboard({
     const interval = setInterval(poll, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [poll]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/analytics/stats?slug=${slug}&range=${analyticsRange}&${authParam}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as AnalyticsStats;
+        if (!cancelled) setAnalytics(data);
+      } catch {
+        // Analytics is best-effort; ignore failures.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authParam, analyticsRange, slug]);
 
   const postAction = useCallback(
     async (path: string) => {
@@ -216,6 +262,7 @@ export default function Dashboard({
 
   const pendingReservations = reservations.filter((r) => r.status === "pending");
   const otherReservations = reservations.filter((r) => r.status !== "pending");
+  const confirmedReservations = reservations.filter((r) => r.status === "confirmed");
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -249,7 +296,7 @@ export default function Dashboard({
       <div className="mx-auto max-w-5xl space-y-8 px-4 py-6 sm:px-6">
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-3">
-          <StatCard label={t.reservationsToday} value={reservations.length} />
+          <StatCard label={t.reservationsToday} value={confirmedReservations.length} />
           <StatCard label={t.pending} value={pendingReservations.length} highlight={pendingReservations.length > 0} />
           <StatCard label={t.requests} value={requests.length} highlight={requests.length > 0} />
         </div>
@@ -326,6 +373,97 @@ export default function Dashboard({
                   onCancel={() => handleCancel(r.reservation_id)}
                 />
               ))}
+            </div>
+          )}
+        </section>
+
+        {/* Analytics */}
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
+              {t.analytics}
+            </h2>
+            <div className="inline-flex rounded-full border border-border bg-surface p-0.5">
+              {(
+                [
+                  ["today", t.rangeToday],
+                  ["week", t.rangeWeek],
+                  ["month", t.rangeMonth],
+                ] as [AnalyticsRange, string][]
+              ).map(([range, label]) => (
+                <button
+                  key={range}
+                  type="button"
+                  onClick={() => setAnalyticsRange(range)}
+                  className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                    analyticsRange === range ? "bg-foreground text-background" : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {!analytics ? (
+            <p className="text-sm text-muted">{t.noAnalytics}</p>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-border bg-surface p-4">
+                  <h3 className="mb-3 text-[11px] uppercase tracking-wider text-muted">{t.mostViewed}</h3>
+                  {analytics.topDishes.length === 0 ? (
+                    <p className="text-sm text-muted">{t.noAnalytics}</p>
+                  ) : (
+                    <ol className="space-y-1.5 text-sm">
+                      {analytics.topDishes.map((d) => (
+                        <li key={d.dishId} className="flex items-center justify-between">
+                          <span className="truncate">{d.title}</span>
+                          <span className="shrink-0 tabular-nums text-muted">{d.count}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+                <div className="rounded-2xl border border-border bg-surface p-4">
+                  <h3 className="mb-3 text-[11px] uppercase tracking-wider text-muted">{t.leastViewed}</h3>
+                  {analytics.leastDishes.length === 0 ? (
+                    <p className="text-sm text-muted">{t.noAnalytics}</p>
+                  ) : (
+                    <ol className="space-y-1.5 text-sm">
+                      {analytics.leastDishes.map((d) => (
+                        <li key={d.dishId} className="flex items-center justify-between">
+                          <span className="truncate">{d.title}</span>
+                          <span className="shrink-0 tabular-nums text-muted">{d.count}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              </div>
+
+              <StatCard label={t.totalOpens} value={analytics.totalOpens} />
+
+              <div className="rounded-2xl border border-border bg-surface p-4">
+                <h3 className="mb-3 text-[11px] uppercase tracking-wider text-muted">{t.languageUsage}</h3>
+                {analytics.languages.length === 0 ? (
+                  <p className="text-sm text-muted">{t.noAnalytics}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {analytics.languages.map((l) => (
+                      <div key={l.language}>
+                        <div className="mb-1 flex items-center justify-between text-sm">
+                          <span className="uppercase">{l.language}</span>
+                          <span className="text-muted">{l.percentage}%</span>
+                        </div>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-subtle">
+                          <div className="h-full rounded-full bg-foreground" style={{ width: `${l.percentage}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </section>

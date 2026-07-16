@@ -26,6 +26,10 @@ export const dict = {
     atmosphere: "Atmosphere",
     themeLight: "Daylight",
     themeDark: "Candlelight",
+    dishCalories: "Calories",
+    dishAllergens: "Allergens",
+    dishWinePairing: "Wine pairing",
+    dishDessertPairing: "Dessert pairing",
   },
   pt: {
     tagline: "Um sabor de Portugal, dentada a dentada.",
@@ -44,6 +48,10 @@ export const dict = {
     atmosphere: "Ambiente",
     themeLight: "Luz do dia",
     themeDark: "Luz de velas",
+    dishCalories: "Calorias",
+    dishAllergens: "Alergénios",
+    dishWinePairing: "Harmonização de vinho",
+    dishDessertPairing: "Sugestão de sobremesa",
   },
 } satisfies Record<Locale, Record<string, string>>;
 

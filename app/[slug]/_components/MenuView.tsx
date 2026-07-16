@@ -11,6 +11,7 @@ import {
   t,
 } from "@/lib/i18n";
 import type { Locale, MenuCategory, Restaurant } from "@/lib/types";
+import { trackEvent } from "@/lib/analytics/track";
 import RestaurantHeader from "./RestaurantHeader";
 import ProductCard from "./ProductCard";
 import ServiceRequestButtons from "./ServiceRequestButtons";
@@ -54,6 +55,20 @@ export default function MenuView({ restaurant, categories }: Props) {
     const next = (queryLang || stored) as Locale | null;
     if (next && LOCALES.includes(next)) setLocale(next);
   }, []);
+
+  useEffect(() => {
+    const key = `bm:opened:${restaurant.slug}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      // ignore
+    }
+    trackEvent({ restaurantId: restaurant.slug, eventType: "menu_open", language: locale });
+    // Fire once per session on initial load; locale is intentionally excluded
+    // so a later language switch doesn't trigger a second menu_open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurant.slug]);
 
   const handleLocaleChange = useCallback((next: Locale) => {
     setLocale(next);
@@ -185,7 +200,7 @@ export default function MenuView({ restaurant, categories }: Props) {
               ) : (
                 <div className="flex flex-col gap-3">
                   {category.items.map((item) => (
-                    <ProductCard key={item.id} item={item} locale={locale} />
+                    <ProductCard key={item.id} item={item} locale={locale} restaurantSlug={restaurant.slug} />
                   ))}
                 </div>
               )}

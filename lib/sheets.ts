@@ -69,6 +69,12 @@ function normalizeImage(url: string): string | null {
   return resolveLocalImage(cleaned);
 }
 
+function localizedOrUndefined(row: Raw, enKey: string, ptKey: string): { en: string; pt: string } | undefined {
+  const en = str(row, enKey);
+  if (!en) return undefined;
+  return { en, pt: str(row, ptKey) || en };
+}
+
 function normalizeRow(row: Raw, index: number): MenuItem | null {
   const titleEn = str(row, "title", "title_en", "name", "name_en");
   if (!titleEn) return null;
@@ -103,6 +109,10 @@ function normalizeRow(row: Raw, index: number): MenuItem | null {
     vegetarian: bool(row, "vegetarian"),
     spicy: bool(row, "spicy"),
     available,
+    calories: str(row, "calories") || undefined,
+    allergens: localizedOrUndefined(row, "allergens", "allergens_pt"),
+    winePairing: localizedOrUndefined(row, "wine_pairing", "wine_pairing_pt"),
+    dessertPairing: localizedOrUndefined(row, "dessert_pairing", "dessert_pairing_pt"),
   };
 }
 

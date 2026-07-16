@@ -8,7 +8,8 @@ type JsonRow = Omit<RestaurantRecord, "sheetId" | "menuUrl" | "dashboardKey">;
 const rawRegistry = data as Record<string, JsonRow>;
 
 function env(prefix: string, slug: string): string {
-  return process.env[`${prefix}_${slug.toUpperCase()}`] ?? "";
+  const key = slug.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+  return process.env[`${prefix}_${key}`] ?? "";
 }
 
 function hydrate(row: JsonRow): RestaurantRecord {
@@ -51,7 +52,7 @@ export function toSheetCtx(r: RestaurantRecord): SheetCtx {
   };
 }
 
-export const defaultRestaurantSlug = "braga";
+export const defaultRestaurantSlug = "casa-de-braga";
 
 /** All registered restaurants (used by the cron to iterate tenants). */
 export function getAllRestaurants(): RestaurantRecord[] {
