@@ -34,7 +34,7 @@ export default function LandingShell() {
         <span className="text-sm font-semibold tracking-tight text-foreground">MenuQR</span>
         <div className="flex items-center gap-3">
           <a
-            href="/braga"
+            href="/casa-de-braga"
             className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-foreground hover:bg-subtle"
           >
             {nav.demo}

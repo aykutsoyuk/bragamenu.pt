@@ -54,7 +54,7 @@ export default function Hero({ lang }: { lang: Lang }) {
             </svg>
           </a>
           <a
-            href="/braga"
+            href="/casa-de-braga"
             className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border bg-surface px-8 py-4 text-base font-medium text-foreground transition-colors hover:bg-subtle sm:w-auto"
           >
             {t.demo}
